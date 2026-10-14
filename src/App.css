@@ -227,6 +227,18 @@ button:disabled { cursor: wait; opacity: .7; }
   line-height: 1.6;
 }
 
+.char-counter {
+  margin: 6px 2px 0;
+  text-align: right;
+  font-size: 10px;
+  letter-spacing: .02em;
+  color: #7e8ba6;
+}
+
+.char-counter.over-limit {
+  color: #ff8a8a;
+}
+
 .primary-button {
   width: 100%;
   min-height: 48px;

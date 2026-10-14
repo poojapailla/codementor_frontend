@@ -6,6 +6,19 @@ import './App.css'
 
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
+// Mirrors the backend/AI-service limits so oversized input is caught early
+// with a clear message instead of an opaque upstream error.
+const MAX_CODE_LENGTH = 20000
+const MAX_TUTOR_CODE_LENGTH = 15000
+
+function describeError(err, fallback) {
+  const raw = err && err.message ? err.message : ''
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(raw)) {
+    return 'Could not reach the CodeMentor AI server. Please check your internet connection and try again.'
+  }
+  return raw || fallback
+}
+
 
 
 const DEFAULT_CODE = {
@@ -309,7 +322,7 @@ function App() {
 
     } catch (err) {
 
-      setError(`${err.message}. Check that Spring Boot is running on port 8080.`)
+      setError(describeError(err, 'Authentication failed. Please try again.'))
 
     } finally {
 
@@ -337,6 +350,14 @@ function App() {
 
     event.preventDefault()
 
+    if (code.length > MAX_TUTOR_CODE_LENGTH) {
+
+      setError(`Your code is ${code.length.toLocaleString()} characters. The AI Tutor accepts up to ${MAX_TUTOR_CODE_LENGTH.toLocaleString()} characters — please split it into a smaller section.`)
+
+      return
+
+    }
+
     setLoading(true)
 
     setError('')
@@ -363,7 +384,7 @@ function App() {
 
     } catch (err) {
 
-      setError(`${err.message}. Check that Spring Boot is running on port 8080 and the Python AI service is running on port 8000.`)
+      setError(describeError(err, 'The AI tutor could not respond. Please try again.'))
 
     } finally {
 
@@ -378,6 +399,14 @@ function App() {
   async function generateTests(event) {
 
     event.preventDefault()
+
+    if (code.length > MAX_CODE_LENGTH) {
+
+      setError(`Your code is ${code.length.toLocaleString()} characters. Please submit ${MAX_CODE_LENGTH.toLocaleString()} characters or fewer at a time.`)
+
+      return
+
+    }
 
     setLoading(true)
 
@@ -403,7 +432,7 @@ function App() {
 
     } catch (err) {
 
-      setError(`${err.message}. Check that Spring Boot is running on port 8080 and the Python AI service is running on port 8000.`)
+      setError(describeError(err, 'Test case generation failed. Please try again.'))
 
     } finally {
 
@@ -424,6 +453,16 @@ function App() {
     if (!token) {
 
       setError('Please log in again so we can identify your account.')
+
+      return
+
+    }
+
+
+
+    if (code.length > MAX_CODE_LENGTH) {
+
+      setError(`Your code is ${code.length.toLocaleString()} characters. Please submit ${MAX_CODE_LENGTH.toLocaleString()} characters or fewer at a time.`)
 
       return
 
@@ -493,7 +532,7 @@ function App() {
 
     } catch (err) {
 
-      setError(`${err.message}. Check that Spring Boot is running on port 8080 and the Python AI service is running on port 8000. If the review failed after saving the submission, submit the code again as a new review.`)
+      setError(describeError(err, 'The code review could not be completed. Please try again.'))
 
     } finally {
 
@@ -533,7 +572,7 @@ function App() {
 
     } catch (err) {
 
-      setError(`${err.message}. Check that Spring Boot is running on port 8080.`)
+      setError(describeError(err, 'Complexity analysis failed. Please try again.'))
 
     } finally {
 
@@ -557,7 +596,7 @@ function App() {
       const data = await readResponse(response)
       setHistoryItems(Array.isArray(data) ? data : (data.content || data.submissions || []))
     } catch (err) {
-      setHistoryError(`${err.message}. Check that Spring Boot is running on port 8080.`)
+      setHistoryError(describeError(err, 'Could not load your review history. Please try again.'))
     } finally {
       setHistoryLoading(false)
     }
@@ -667,7 +706,7 @@ function App() {
 
         <div className="header-actions">
 
-          <span className="status"><span className="status-dot" /> Local AI workspace</span>
+          <span className="status"><span className="status-dot" /> AI workspace online</span>
 
           {user && (
 
@@ -691,7 +730,7 @@ function App() {
 
         <h1>Understand code.<br /><span>Become a better developer.</span></h1>
 
-        <p>Review code, learn concepts step by step, and improve your programming skills with your local AI model.</p>
+        <p>Review code, learn concepts step by step, and improve your programming skills with our AI models.</p>
 
       </section>
 
@@ -771,7 +810,7 @@ function App() {
 
             </p>
 
-            <p className="privacy-note">Your password is sent to your local backend over the configured development connection. Never share your password.</p>
+            <p className="privacy-note">Your password is sent securely to the CodeMentor AI server. Never share your password.</p>
 
           </form>
 
@@ -950,7 +989,9 @@ function App() {
 
               <label htmlFor="code">Your code</label>
 
-              <textarea id="code" className="code-input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste your code here..." required spellCheck="false" />
+              <textarea id="code" className="code-input" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste your code here..." required spellCheck="false" maxLength={MAX_CODE_LENGTH} />
+
+              <p className={`char-counter${code.length > MAX_CODE_LENGTH ? ' over-limit' : ''}`}>{code.length.toLocaleString()} / {MAX_CODE_LENGTH.toLocaleString()} characters</p>
 
 
 
@@ -1004,7 +1045,7 @@ function App() {
 
               </button>
 
-              <p className="privacy-note">Code is processed by your locally running CodeMentor AI services.</p>
+              <p className="privacy-note">Code is processed by the CodeMentor AI services.</p>
 
             </form>
 
@@ -1042,7 +1083,7 @@ function App() {
 
                   <h3>{mode === 'review' ? 'Reviewing your code' : mode === 'tutor' ? 'Thinking through your code' : mode === 'tests' ? 'Generating test cases' : 'Analyzing complexity'}</h3>
 
-                  <p>Your local AI model is preparing a response. This may take a little while.</p>
+                  <p>Our AI model is preparing a response. This may take a little while.</p>
 
                 </div>
 
